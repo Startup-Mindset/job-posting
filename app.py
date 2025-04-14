@@ -67,7 +67,10 @@ if option == "Imágenes & PDFs":
                             except (json.JSONDecodeError, AttributeError):
                                 st.markdown(content)
                         else:
-                            st.error(f"API Error: {response.status_code}")
+                            if response.status_code == 500:
+                                st.error("Si obtuviste un error se debe a que el enlace enviado tiene múltiples posiciones en el mismo enlace, por favor ingresa a la subpágina de la posición, envía dicho enlace y mira la magia pasar")
+                            else:
+                                st.error(f"API Error: {response.status_code}")
                     except Exception as e:
                         st.error(f"Processing failed: {str(e)}")
         else:
@@ -137,7 +140,10 @@ elif option == "URLs":
                             # If response is not JSON at all, display as Markdown
                             st.markdown(response.text)
                     else:
-                        st.error(f"API Error: {response.status_code}")
+                        if response.status_code == 500:
+                            st.error("El enlace enviado tiene **MULTIPLES** posiciones, por favor ingresa a la **subpágina** de la posición, envía dicho enlace y mira la magia pasar!!")
+                        else:
+                            st.error(f"API Error: {response.status_code}")
                 except Exception as e:
                     st.error(f"Connection failed: {str(e)}")
 
