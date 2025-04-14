@@ -15,6 +15,10 @@ def is_valid_url(url):
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
     return url.startswith(('http://', 'https://')) and bool(pattern.match(url))
 
+# --- Get API endpoints from secrets ---
+API_FILE = st.secrets["api_file"]
+API_TEXT = st.secrets["api_text"]
+
 # --- App Config ---
 st.set_page_config(page_title="Job Processor", layout="wide")
 st.title("Job Posting Processor")
@@ -41,7 +45,7 @@ if option == "Imágenes & PDFs":
                 with st.spinner("Extrayendo los detalles de la posición...", show_time=True):
                     try:
                         response = requests.post(
-                            "https://liq2d5.buildship.run/file-upload",
+                            API_FILE,
                             files={"file": (uploaded_file.name, uploaded_file.getvalue())}
                         )
                         
@@ -88,7 +92,7 @@ elif option == "URLs":
             with st.spinner("Analizando posición de trabajo...", show_time=True):
                 try:
                     response = requests.post(
-                        "https://liq2d5.buildship.run/text-url-v-3-copy-df79b737eab2",
+                        API_TEXT,
                         json={"websiteUrl": url},
                         headers={"Content-Type": "application/json"}
                     )
@@ -141,7 +145,7 @@ elif option == "URLs":
                             st.markdown(response.text)
                     else:
                         if response.status_code == 500:
-                            st.error("El enlace enviado tiene **MULTIPLES** posiciones, por favor ingresa a la **subpágina** de la posición, envía dicho enlace y mira la magia pasar!!")
+                            st.error("Si obtuviste un error se debe a que el enlace enviado tiene múltiples posiciones en el mismo enlace, por favor ingresa a la subpágina de la posición, envía dicho enlace y mira la magia pasar")
                         else:
                             st.error(f"API Error: {response.status_code}")
                 except Exception as e:
