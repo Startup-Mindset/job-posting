@@ -20,25 +20,25 @@ st.set_page_config(page_title="Job Processor", layout="wide")
 st.title("Job Posting Processor")
 
 option = st.selectbox(
-    "Select input type:",
-    ("Images & PDFs", "Text", "URLs"),
+    "Selecciona la opción que desees:",
+    ("Imágenes & PDFs", "Texto", "URLs"),
     index=0
 )
 
 # ===== PATH 1: Images/PDFs =====
-if option == "Images & PDFs":
-    st.subheader("Upload Job Posting")
+if option == "Imágenes & PDFs":
+    st.subheader("Por favor sube una posición de trabajo")
     uploaded_file = st.file_uploader(
-        "PDF or Image (JPEG/PNG)",
+        "PDF o Imagen (JPEG/PNG)",
         type=["pdf", "jpg", "jpeg", "png"],
         accept_multiple_files=False
     )
     
     if uploaded_file is not None:
         if uploaded_file.size <= 5 * 1024 * 1024:
-            st.success("✓ File uploaded successfully")
+            st.success("✓ Archivo cargado con Éxito")
             if st.button("Process"):
-                with st.spinner("Extracting job details...", show_time=True):
+                with st.spinner("Extrayendo los detalles de la posición...", show_time=True):
                     try:
                         response = requests.post(
                             "https://liq2d5.buildship.run/file-upload",
@@ -71,18 +71,18 @@ if option == "Images & PDFs":
                     except Exception as e:
                         st.error(f"Processing failed: {str(e)}")
         else:
-            st.error("File size must be under 5MB")
+            st.error("El archivo debe pesar menos de 5MB")
 
 # ===== PATH 3: URLs =====
 elif option == "URLs":
-    st.subheader("Enter Job Posting URL")
-    url = st.text_input("Paste job posting URL:", placeholder="https://example.com/job-posting")
+    st.subheader("Ingresa el URL de la posición")
+    url = st.text_input("Pega el URL:", placeholder="https://example.com/job-posting")
     
     if url:
         if not is_valid_url(url):
-            st.error("Please enter a valid URL starting with http:// or https://")
+            st.error("Por favor ingresa un URL válido que empeiza con http:// or https://")
         elif st.button("Process"):
-            with st.spinner("Analyzing job posting...", show_time=True):
+            with st.spinner("Analizando posición de trabajo...", show_time=True):
                 try:
                     response = requests.post(
                         "https://liq2d5.buildship.run/text-url-v-3-copy-df79b737eab2",
@@ -143,7 +143,7 @@ elif option == "URLs":
 
 
 # ===== PATH 2: Text (Placeholder) =====
-elif option == "Text":
-    st.subheader("Paste Job Description")
-    text_input = st.text_area("Enter job description text:", height=200)
-    st.warning("Text processing feature coming soon!")
+elif option == "Texto":
+    st.subheader("Pega el texto de la posición de trabajo")
+    text_input = st.text_area("Ingresa el texto de la posición:", height=200)
+    st.warning("Esta funcionalidad estará lista pronto !")
