@@ -16,7 +16,7 @@ API_TEXT = st.secrets["api_text"]
 st.set_page_config(page_title="Job Processor", layout="wide")
 st.markdown(
     '''
-    ### Proceso
+    ## Proceso
     1. Envía la posición en el formato que desees 
     2. Puedes el resultado final y editarlo dando click en la columna que desees
     3. Cuando la posición este lista, envíala en ***Enviar a Notion***
@@ -35,7 +35,10 @@ option = st.selectbox(
 
 # ===== PATH 1: Images/PDFs =====
 if option == "Imágenes & PDFs":
-    st.subheader("Por favor sube una posición de trabajo")
+    st.markdown('''
+                #### Por favor sube una posición de trabajo
+                ''')
+    
     uploaded_file = st.file_uploader(
         "PDF o Imagen (JPEG/PNG)",
         type=["pdf", "jpg", "jpeg", "png"],
@@ -74,7 +77,9 @@ if option == "Imágenes & PDFs":
 
 # ===== PATH 3: URLs =====
 elif option == "URLs":
-    st.subheader("Ingresa el URL de la posición")
+    st.markdown('''
+                #### Ingresa el URL de la posición
+                ''')
     url = st.text_input("Pega el URL:", placeholder="https://example.com/job-posting")
     
     if url:
@@ -103,7 +108,9 @@ elif option == "URLs":
 
 # ===== PATH 2: Text (Process Text Input) =====
 elif option == "Texto":
-    st.subheader("Pega el texto de la posición de trabajo")
+    st.markdown('''
+                #### Pega el texto de la posición de trabajo
+                ''')
     text_input = st.text_area("Ingresa el texto de la posición:", height=200, key="job_text_input")
     
     if text_input.strip():
