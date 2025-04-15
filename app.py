@@ -1,19 +1,12 @@
 import streamlit as st
-import requests
 import pandas as pd
-import json
-import re
-
-# --- URL Validation ---
-def is_valid_url(url):
-    pattern = re.compile(
-        r'^https?://'
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
-        r'localhost|'
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
-        r'(?::\d+)?'
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-    return url.startswith(('http://', 'https://')) and bool(pattern.match(url))
+from utils import (
+    is_valid_url,
+    process_file,
+    process_url,
+    display_job_data,
+    process_text
+)
 
 # --- Get API endpoints from secrets ---
 API_FILE = st.secrets["api_file"]
@@ -21,7 +14,18 @@ API_TEXT = st.secrets["api_text"]
 
 # --- App Config ---
 st.set_page_config(page_title="Job Processor", layout="wide")
-st.title("Job Posting Processor")
+st.markdown(
+    '''
+    ### Proceso
+    1. Envía la posición en el formato que desees 
+    2. Puedes el resultado final y editarlo dando click en la columna que desees
+    3. Cuando la posición este lista, envíala en ***Enviar a Notion***
+    4. En menos de 24h podrás ver la posición en nuestra plataforma
+
+    '''
+    )
+
+st.divider()
 
 option = st.selectbox(
     "Selecciona la opción que desees:",
@@ -44,39 +48,27 @@ if option == "Imágenes & PDFs":
             if st.button("Process"):
                 with st.spinner("Extrayendo los detalles de la posición...", show_time=True):
                     try:
-                        response = requests.post(
-                            API_FILE,
-                            files={"file": (uploaded_file.name, uploaded_file.getvalue())}
+                        job_data = process_file(
+                            file_content=uploaded_file.getvalue(),
+                            file_name=uploaded_file.name,
+                            api_endpoint=API_FILE
                         )
+                        result = display_job_data(job_data)
                         
-                        if response.status_code == 200:
-                            response_data = response.json()
-                            content = response_data.get("value", "")
-                            
-                            try:
-                                job_data = json.loads(content) if isinstance(content, str) else content
-                                if isinstance(job_data, dict):
-                                    df = pd.DataFrame([job_data])
-                                    st.data_editor(
-                                        df,
-                                        hide_index=True,
-                                        column_config={
-                                            "Description": st.column_config.TextColumn(width="large"),
-                                            "apply_URL": st.column_config.LinkColumn("Apply Link")
-                                        },
-                                        use_container_width=True
-                                    )
-                                else:
-                                    st.markdown(str(job_data))
-                            except (json.JSONDecodeError, AttributeError):
-                                st.markdown(content)
+                        if isinstance(result, pd.DataFrame):
+                            st.data_editor(
+                                result,
+                                hide_index=True,
+                                column_config={
+                                    "Description": st.column_config.TextColumn(width="large"),
+                                    "apply_URL": st.column_config.LinkColumn("Apply Link")
+                                },
+                                use_container_width=True
+                            )
                         else:
-                            if response.status_code == 500:
-                                st.error("Si obtuviste un error se debe a que el enlace enviado tiene múltiples posiciones en el mismo enlace, por favor ingresa a la subpágina de la posición, envía dicho enlace y mira la magia pasar")
-                            else:
-                                st.error(f"API Error: {response.status_code}")
+                            st.markdown(result)
                     except Exception as e:
-                        st.error(f"Processing failed: {str(e)}")
+                        st.error(str(e))
         else:
             st.error("El archivo debe pesar menos de 5MB")
 
@@ -87,73 +79,54 @@ elif option == "URLs":
     
     if url:
         if not is_valid_url(url):
-            st.error("Por favor ingresa un URL válido que empeiza con http:// or https://")
+            st.error("Por favor ingresa un URL válido que empiece con http:// o https://")
         elif st.button("Process"):
             with st.spinner("Analizando posición de trabajo...", show_time=True):
                 try:
-                    response = requests.post(
-                        API_TEXT,
-                        json={"websiteUrl": url},
-                        headers={"Content-Type": "application/json"}
-                    )
+                    job_data = process_url(url, API_TEXT)
+                    result = display_job_data(job_data)
                     
-                    if response.status_code == 200:
-                        # First try to parse as JSON
-                        try:
-                            response_data = response.json()
-                            
-                            # Handle case where API returns JSON with 'value' field
-                            if 'value' in response_data:
-                                content = response_data['value']
-                                try:
-                                    # If value is JSON string, parse it
-                                    if isinstance(content, str):
-                                        content = json.loads(content)
-                                    
-                                    # If we have a dictionary, show as DataFrame
-                                    if isinstance(content, dict):
-                                        df = pd.DataFrame([content])
-                                        st.data_editor(
-                                            df,
-                                            hide_index=True,
-                                            column_config={
-                                                "Description": st.column_config.TextColumn(width="large"),
-                                                "apply_URL": st.column_config.LinkColumn("Apply Link")
-                                            },
-                                            use_container_width=True
-                                        )
-                                    else:
-                                        # For non-dict JSON, show as Markdown
-                                        st.markdown(str(content))
-                                except json.JSONDecodeError:
-                                    # If value is plain text, show as Markdown
-                                    st.markdown(content)
-                            else:
-                                # For direct JSON responses without 'value' field
-                                df = pd.DataFrame([response_data])
-                                st.data_editor(
-                                    df,
-                                    hide_index=True,
-                                    column_config={
-                                        "Description": st.column_config.TextColumn(width="large"),
-                                        "apply_URL": st.column_config.LinkColumn("Apply Link")
-                                    },
-                                    use_container_width=True
-                                )
-                        except json.JSONDecodeError:
-                            # If response is not JSON at all, display as Markdown
-                            st.markdown(response.text)
+                    if isinstance(result, pd.DataFrame):
+                        st.data_editor(
+                            result,
+                            hide_index=True,
+                            column_config={
+                                "Description": st.column_config.TextColumn(width="large"),
+                                "apply_URL": st.column_config.LinkColumn("Apply Link")
+                            },
+                            use_container_width=True
+                        )
                     else:
-                        if response.status_code == 500:
-                            st.error("Si obtuviste un error se debe a que el enlace enviado tiene múltiples posiciones en el mismo enlace, por favor ingresa a la subpágina de la posición, envía dicho enlace y mira la magia pasar")
-                        else:
-                            st.error(f"API Error: {response.status_code}")
+                        st.markdown(result)
                 except Exception as e:
-                    st.error(f"Connection failed: {str(e)}")
+                    st.error(str(e))
 
-
-# ===== PATH 2: Text (Placeholder) =====
+# ===== PATH 2: Text (Process Text Input) =====
 elif option == "Texto":
     st.subheader("Pega el texto de la posición de trabajo")
-    text_input = st.text_area("Ingresa el texto de la posición:", height=200)
-    st.warning("Esta funcionalidad estará lista pronto !")
+    text_input = st.text_area("Ingresa el texto de la posición:", height=200, key="job_text_input")
+    
+    if text_input.strip():
+        if st.button("Procesar Texto"):
+            with st.spinner("Analizando texto de la posición...", show_time=True):
+                try:
+                    # Call the dedicated text processor
+                    job_data = process_text(text_input, API_TEXT)
+                    result = display_job_data(job_data)
+                    
+                    if isinstance(result, pd.DataFrame):
+                        st.data_editor(
+                            result,
+                            hide_index=True,
+                            column_config={
+                                "Description": st.column_config.TextColumn(width="large"),
+                                "apply_URL": st.column_config.LinkColumn("Apply Link")
+                            },
+                            use_container_width=True
+                        )
+                    else:
+                        st.markdown(result)
+                except Exception as e:
+                    st.error(f"Error al procesar el texto: {str(e)}")
+    else:
+        st.warning("Por favor ingresa el texto de la posición antes de procesar.")
