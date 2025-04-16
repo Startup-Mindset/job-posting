@@ -20,10 +20,10 @@ if 'display_mode' not in st.session_state:  # 'table' or 'text'
 st.set_page_config(page_title="Job Processor", layout="wide")
 st.markdown(
     '''
-    ### Proceso
+    ## Proceso
     1. Envía la posición en el formato que desees 
     2. Puedes el resultado final y editarlo dando click en la columna que desees
-    3. Cuando la posición este lista, envíala en ***Enviar a Notion***
+    3. Cuando la posición este lista, envíala en ***Enviar a Notion*** *(En desarrollo)*
     4. En menos de 24h podrás ver la posición en nuestra plataforma
 
     '''
@@ -57,7 +57,7 @@ option = st.selectbox(
 
 # ===== PATH 1: Images/PDFs =====
 if option == "Imágenes & PDFs":
-    st.subheader("Por favor sube una posición de trabajo")
+    st.markdown("##### Por favor sube una posición de trabajo")
     uploaded_file = st.file_uploader(
         "PDF o Imagen (JPEG/PNG)",
         type=["pdf", "jpg", "jpeg", "png"],
@@ -78,7 +78,7 @@ if option == "Imágenes & PDFs":
 
 # ===== PATH 2: Texto =====
 elif option == "Texto":
-    st.subheader("Pega el texto de la posición de trabajo")
+    st.markdown("##### Pega el texto de la posición de trabajo")
     text_input = st.text_area("Ingresa el texto de la posición:", height=200)
     
     if text_input.strip() and st.button("Procesar"):
@@ -91,7 +91,7 @@ elif option == "Texto":
 
 # ===== PATH 3: URLs =====
 elif option == "URLs":
-    st.subheader("Ingresa el URL de la posición")
+    st.markdown("##### Ingresa el URL de la posición")
     url = st.text_input("Pega el URL:", placeholder="https://example.com/job-posting")
     
     if url and st.button("Process"):
@@ -106,8 +106,9 @@ elif option == "URLs":
                 )
 
 # ===== Display Results =====
+st.divider()
 if st.session_state.display_mode == 'table':
-    st.subheader("Resultados")
+    st.markdown("##### Resultados")
     edited_df = st.data_editor(
         st.session_state.df,
         hide_index=True,
@@ -124,5 +125,5 @@ if st.session_state.display_mode == 'table':
         st.session_state.job_data = edited_df.to_dict('records')[0]
 
 elif st.session_state.display_mode == 'text':
-    st.subheader("Resultados")
+    st.markdown("##### Resultados")
     st.markdown(st.session_state.text_output)
