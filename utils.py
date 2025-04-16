@@ -65,15 +65,14 @@ def handle_api_response(response):
         raise Exception(f"API Error: {response.status_code}")
 
 def display_job_data(job_data):
-    """Display job data in appropriate format"""
     if isinstance(job_data, dict):
-        # Ensure we have a flat dictionary for DataFrame conversion
-        flat_data = {k: str(v) if isinstance(v, (list, dict)) else v 
-                   for k, v in job_data.items()}
-        return pd.DataFrame([flat_data])
+        # Convert dict to DataFrame
+        return pd.DataFrame([job_data])
     elif isinstance(job_data, str):
+        # Return text directly
         return job_data
     else:
+        # Fallback string conversion
         return str(job_data)
     
 

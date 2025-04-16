@@ -3,30 +3,52 @@ import pandas as pd
 from utils import (
     is_valid_url,
     process_file,
+    process_text,
     process_url,
-    display_job_data,
-    process_text
+    display_job_data
 )
 
-# --- Get API endpoints from secrets ---
-API_FILE = st.secrets["api_file"]
-API_TEXT = st.secrets["api_text"]
+# --- Initialize Session State ---
+if 'job_data' not in st.session_state:
+    st.session_state.job_data = None
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'display_mode' not in st.session_state:  # 'table' or 'text'
+    st.session_state.display_mode = None
 
 # --- App Config ---
 st.set_page_config(page_title="Job Processor", layout="wide")
 st.markdown(
     '''
-    ### Proceso
+    ## Proceso
     1. Envía la posición en el formato que desees 
     2. Puedes el resultado final y editarlo dando click en la columna que desees
-    3. Cuando la posición este lista, envíala en ***Enviar a Notion***
+    3. Cuando la posición este lista, envíala en ***Enviar a Notion*** *(En desarrollo)*
     4. En menos de 24h podrás ver la posición en nuestra plataforma
 
     '''
     )
-
 st.divider()
 
+# --- Processing Functions ---
+def process_and_store_data(processor, *args):
+    """Universal processing function for all paths"""
+    try:
+        st.session_state.job_data = processor(*args)
+        result = display_job_data(st.session_state.job_data)
+        
+        if isinstance(result, pd.DataFrame):
+            st.session_state.df = result
+            st.session_state.display_mode = 'table'
+        else:
+            st.session_state.display_mode = 'text'
+            st.session_state.text_output = str(result)
+            
+    except Exception as e:
+        st.error(f"Processing error: {str(e)}")
+        st.session_state.display_mode = None
+
+# --- Main UI ---
 option = st.selectbox(
     "Selecciona la opción que desees:",
     ("Imágenes & PDFs", "Texto", "URLs"),
@@ -35,98 +57,73 @@ option = st.selectbox(
 
 # ===== PATH 1: Images/PDFs =====
 if option == "Imágenes & PDFs":
-    st.subheader("Por favor sube una posición de trabajo")
+    st.markdown("##### Por favor sube una posición de trabajo")
     uploaded_file = st.file_uploader(
         "PDF o Imagen (JPEG/PNG)",
         type=["pdf", "jpg", "jpeg", "png"],
         accept_multiple_files=False
     )
     
-    if uploaded_file is not None:
+    if uploaded_file and st.button("Process"):
         if uploaded_file.size <= 5 * 1024 * 1024:
-            st.success("✓ Archivo cargado con Éxito")
-            if st.button("Process"):
-                with st.spinner("Extrayendo los detalles de la posición...", show_time=True):
-                    try:
-                        job_data = process_file(
-                            file_content=uploaded_file.getvalue(),
-                            file_name=uploaded_file.name,
-                            api_endpoint=API_FILE
-                        )
-                        result = display_job_data(job_data)
-                        
-                        if isinstance(result, pd.DataFrame):
-                            st.data_editor(
-                                result,
-                                hide_index=True,
-                                column_config={
-                                    "Description": st.column_config.TextColumn(width="large"),
-                                    "apply_URL": st.column_config.LinkColumn("Apply Link")
-                                },
-                                use_container_width=True
-                            )
-                        else:
-                            st.markdown(result)
-                    except Exception as e:
-                        st.error(str(e))
+            with st.spinner("Extrayendo los detalles...", show_time=True):
+                process_and_store_data(
+                    process_file,
+                    uploaded_file.getvalue(),
+                    uploaded_file.name,
+                    st.secrets["api_file"]
+                )
         else:
             st.error("El archivo debe pesar menos de 5MB")
 
+# ===== PATH 2: Texto =====
+elif option == "Texto":
+    st.markdown("##### Pega el texto de la posición de trabajo")
+    text_input = st.text_area("Ingresa el texto de la posición:", height=200)
+    
+    if text_input.strip() and st.button("Procesar"):
+        with st.spinner("Analizando texto...", show_time=True):
+            process_and_store_data(
+                process_text,
+                text_input,
+                st.secrets["api_text"]
+            )
+
 # ===== PATH 3: URLs =====
 elif option == "URLs":
-    st.subheader("Ingresa el URL de la posición")
+    st.markdown("##### Ingresa el URL de la posición")
     url = st.text_input("Pega el URL:", placeholder="https://example.com/job-posting")
     
-    if url:
+    if url and st.button("Process"):
         if not is_valid_url(url):
-            st.error("Por favor ingresa un URL válido que empiece con http:// o https://")
-        elif st.button("Process"):
-            with st.spinner("Analizando posición de trabajo...", show_time=True):
-                try:
-                    job_data = process_url(url, API_TEXT)
-                    result = display_job_data(job_data)
-                    
-                    if isinstance(result, pd.DataFrame):
-                        st.data_editor(
-                            result,
-                            hide_index=True,
-                            column_config={
-                                "Description": st.column_config.TextColumn(width="large"),
-                                "apply_URL": st.column_config.LinkColumn("Apply Link")
-                            },
-                            use_container_width=True
-                        )
-                    else:
-                        st.markdown(result)
-                except Exception as e:
-                    st.error(str(e))
+            st.error("URL inválido. Debe comenzar con http:// o https://")
+        else:
+            with st.spinner("Analizando URL...", show_time=True):
+                process_and_store_data(
+                    process_url,
+                    url,
+                    st.secrets["api_text"]
+                )
 
-# ===== PATH 2: Text (Process Text Input) =====
-elif option == "Texto":
-    st.subheader("Pega el texto de la posición de trabajo")
-    text_input = st.text_area("Ingresa el texto de la posición:", height=200, key="job_text_input")
+# ===== Display Results =====
+st.divider()
+if st.session_state.display_mode == 'table':
+    st.markdown("##### Resultados")
+    edited_df = st.data_editor(
+        st.session_state.df,
+        hide_index=True,
+        column_config={
+            "Description": st.column_config.TextColumn(width="large"),
+            "apply_URL": st.column_config.LinkColumn("Apply Link")
+        },
+        key="data_editor"
+    )
     
-    if text_input.strip():
-        if st.button("Procesar Texto"):
-            with st.spinner("Analizando texto de la posición...", show_time=True):
-                try:
-                    # Call the dedicated text processor
-                    job_data = process_text(text_input, API_TEXT)
-                    result = display_job_data(job_data)
-                    
-                    if isinstance(result, pd.DataFrame):
-                        st.data_editor(
-                            result,
-                            hide_index=True,
-                            column_config={
-                                "Description": st.column_config.TextColumn(width="large"),
-                                "apply_URL": st.column_config.LinkColumn("Apply Link")
-                            },
-                            use_container_width=True
-                        )
-                    else:
-                        st.markdown(result)
-                except Exception as e:
-                    st.error(f"Error al procesar el texto: {str(e)}")
-    else:
-        st.warning("Por favor ingresa el texto de la posición antes de procesar.")
+    # Auto-save changes
+    if not edited_df.equals(st.session_state.df):
+        st.session_state.df = edited_df
+        st.session_state.job_data = edited_df.to_dict('records')[0]
+
+elif st.session_state.display_mode == 'text':
+    st.markdown("##### Resultados")
+    st.markdown(st.session_state.text_output)
