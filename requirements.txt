@@ -1,1 +1,2 @@
 streamlit
+notion_client
