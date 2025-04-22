@@ -2,6 +2,9 @@ import re
 import requests
 import json
 import pandas as pd
+from notion_client import Client
+import logging
+
 
 def is_valid_url(url):
     """Validate URL format"""
@@ -87,3 +90,42 @@ def process_text(text, api_endpoint):
         return handle_api_response(response)
     except Exception as e:
         raise Exception(f"Text processing failed: {str(e)}")
+    
+def send_to_notion(data, database_id, token):
+    """Send processed job data to Notion database.
+    
+    Args:
+        data (dict): Job data matching Notion's property schema
+        database_id (str): Notion database ID
+        token (str): Notion integration token
+    
+    Returns:
+        str: URL of the created Notion page
+    """
+    try:
+        notion = Client(auth=token)
+        
+        # Map our data to Notion properties
+        new_page = {
+            "Role": {"title": [{"text": {"content": data["Job Title"]}}]},
+            "Startup": {"rich_text": [{"text": {"content": data["Company"]}}]},
+            "Apply URL": {"url": data["apply_Url"]},
+            "Summary": {"rich_text": [{"text": {"content": data["Description"]}}]},
+            "Location": {"rich_text": [{"text": {"content": data["Location"]}}]},
+            "Remote": {"select": {"name": data["Remote"]}}
+        }
+
+        # Only add file_URL if it exists and isn't empty
+        if data.get("file_Url"):
+            new_page["Original file"] = {"url": data["file_Url"]}
+        
+        created_page = notion.pages.create(
+            parent={"database_id": database_id},
+            properties=new_page
+        )
+        
+        return created_page["url"]
+    
+    except Exception as e:
+        logging.error(f"Notion API error: {str(e)}")
+        raise Exception(f"Failed to send to Notion: {str(e)}")

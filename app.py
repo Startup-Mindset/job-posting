@@ -5,7 +5,8 @@ from utils import (
     process_file,
     process_text,
     process_url,
-    display_job_data
+    display_job_data,
+    send_to_notion
 )
 
 # --- Initialize Session State ---
@@ -123,6 +124,28 @@ if st.session_state.display_mode == 'table':
     if not edited_df.equals(st.session_state.df):
         st.session_state.df = edited_df
         st.session_state.job_data = edited_df.to_dict('records')[0]
+    
+    # --- New Notion Integration UI ---
+    st.divider()
+    confirmed = st.checkbox("La data es correcta y quiero postearla")
+    
+    if confirmed:
+        if st.button("Enviar a Notion", type="primary"):
+            with st.spinner("Enviando a Notion..."):
+                try:
+                    # Convert DataFrame to dict
+                    job_data = st.session_state.df.to_dict('records')[0]
+                    
+                    # Send to Notion
+                    notion_page_url = send_to_notion(
+                        data=job_data,
+                        database_id=st.secrets["notion_database_id"],
+                        token=st.secrets["notion_token"]
+                    )
+                    
+                    st.success(f"¡Enviada con Éxito a Notion!")
+                except Exception as e:
+                    st.error(f"Error al enviar a Notion: {str(e)}")
 
 elif st.session_state.display_mode == 'text':
     st.markdown("##### Resultados")
