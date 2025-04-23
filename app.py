@@ -19,17 +19,6 @@ if 'display_mode' not in st.session_state:  # 'table' or 'text'
 
 # --- App Config ---
 st.set_page_config(page_title="Job Processor", layout="wide")
-st.markdown(
-    '''
-    ## Proceso
-    1. Envía la posición en el formato que desees 
-    2. Puedes el resultado final y editarlo dando click en la columna que desees
-    3. Cuando la posición este lista, envíala en ***Enviar a Notion*** *(En desarrollo)*
-    4. En menos de 24h podrás ver la posición en nuestra plataforma
-
-    '''
-    )
-st.divider()
 
 # --- Processing Functions ---
 def process_and_store_data(processor, *args):
