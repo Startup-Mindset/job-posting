@@ -119,8 +119,8 @@ if st.session_state.display_mode == 'table':
     confirmed = st.checkbox("La data es correcta y quiero postearla")
     
     if confirmed:
-        if st.button("Enviar a Notion", type="primary"):
-            with st.spinner("Enviando a Notion..."):
+        if st.button("Enviar a Revisión", type="primary"):
+            with st.spinner("Enviando a Revisión..."):
                 try:
                     # Convert DataFrame to dict
                     job_data = st.session_state.df.to_dict('records')[0]
@@ -132,9 +132,9 @@ if st.session_state.display_mode == 'table':
                         token=st.secrets["notion_token"]
                     )
                     
-                    st.success(f"¡Enviada con Éxito a Notion!")
+                    st.success(f"¡Enviada con Éxito!")
                 except Exception as e:
-                    st.error(f"Error al enviar a Notion: {str(e)}")
+                    st.error(f"Error al enviar a Revisión: {str(e)}")
 
 elif st.session_state.display_mode == 'text':
     st.markdown("##### Resultados")
